@@ -1,0 +1,19 @@
+new_tab code
+layout horizontal
+launch --title "code" bash 
+
+new_tab terminal 
+layout horizontal 
+launch --title "terminal" bash 
+
+new_tab ranger
+enabled_layouts horizontal,stack
+layout horizontal 
+launch ranger
+
+new_tab terminal 
+layout horizontal 
+launch --title "zola" bash 
+
+
+

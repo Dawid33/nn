@@ -1,0 +1,9 @@
+zig-cache
+zig-out
+graphs
+*.tar.gz
+
+
+# Added by cargo
+
+/target

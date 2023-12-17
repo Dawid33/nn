@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 type Node = isize;
 type Edge = (isize, isize);
@@ -16,16 +16,17 @@ pub struct Edges {
     total: u8,
 }
 
+#[derive(Clone)]
 pub struct Graph {
-    m: Vec<Vec<u8>>,
-    input: u8,
-    output: u8,
-    total: u8,
+    pub adjacency_matrix: Vec<Vec<u8>>,
+    pub input: u8,
+    pub output: u8,
+    pub total: u8,
 }
 
 pub fn render<W: Write>(g: &Graph, output: &mut W) {
     let mut e = Vec::new();
-    for (x, rows) in g.m.iter().enumerate() {
+    for (x, rows) in g.adjacency_matrix.iter().enumerate() {
         for (y, value) in rows.iter().enumerate() {
             if *value > 0 {
                 e.push((y as isize, x as isize));
@@ -85,6 +86,64 @@ impl<'a> dot::GraphWalk<'a, Node, Edge> for Edges {
     }
 }
 
+pub fn save_graph(path: PathBuf, g: &Graph) {
+    let mut result = String::from(format!("{} {}\n", g.input, g.output));
+
+    for x in &g.adjacency_matrix {
+        let mut iter = x.iter();
+
+        if let Some(value) = iter.next() {
+            result.push_str(format!("{}", value).as_str());
+        }
+
+        while let Some(value) = &iter.next() {
+            result.push_str(format!(" {}", value).as_str());
+        }
+        result.push('\n');
+    }
+
+    std::fs::write(path, result).unwrap();
+}
+
+pub fn read_graph(path: PathBuf) -> Graph {
+    let raw = std::fs::read_to_string(path).unwrap();
+    let mut matrix: Vec<Vec<u8>> = Vec::new();
+    let mut iter = raw.split('\n');
+
+    let mut input = 0;
+    let mut output = 0;
+
+    if let Some(start_line) = &iter.next() {
+        let mut nums = start_line.split(' ');
+        if let Some(value) = nums.next() {
+            input = u8::from_str_radix(value, 10).unwrap();
+        }
+
+        if let Some(value) = nums.next() {
+            output = u8::from_str_radix(value, 10).unwrap();
+        }
+    }
+
+    for line in iter {
+        if line.is_empty() {
+            break;
+        }
+
+        let mut row = Vec::new();
+        for value in line.split(' ') {
+            row.push(u8::from_str_radix(value, 10).unwrap());
+        }
+        matrix.push(row);
+    }
+
+    Graph {
+        total: matrix.len() as u8,
+        adjacency_matrix: matrix,
+        input,
+        output,
+    }
+}
+
 // Step 1: Get all possible permutations of a graph by getting getting the
 // number of cells, incrementing a number from zero up to that number of cells
 // in bits and setting the lower triangle with that bit representation.
@@ -95,7 +154,7 @@ impl<'a> dot::GraphWalk<'a, Node, Edge> for Edges {
 //
 // Step 3: Check if the graph is connected and reject it if its not.
 pub fn gen_matrices(input: u8, output: u8) {
-    for i in 1..15 {
+    for i in 1..4 {
         std::fs::create_dir_all(format!("graphs/{}", i)).unwrap();
         let path = PathBuf::from(format!("graphs/{}", i));
         if let Err(_) = gen_matrices_inner(input, i, output, path) {
@@ -200,10 +259,10 @@ pub fn gen_matrices_inner(
             }
         }
 
-        // Depth first search over the graph such that we start the search from
-        // every input vertex and finish at some output vertex. Check off which
-        // nodes have been traversed during this search and if its < n then the
-        // graph isn't connected.
+        // Search over the graph such that we start the search from every input
+        // vertex and finish at some output vertex. Check off which nodes have
+        // been traversed during this search and if its < n then the graph isn't
+        // connected.
 
         // Start from all input vertices
         let mut traversed_nodes: Vec<usize> = Vec::new();
@@ -242,29 +301,38 @@ pub fn gen_matrices_inner(
 
         // Dump matrix to file system
         {
-            print(&m);
-            println!("");
+            let path = path.join(format!("{}", actually_correct_cnt));
+            actually_correct_cnt += 1;
+            std::fs::create_dir_all(&path).unwrap();
 
             let g = Graph {
-                m,
+                adjacency_matrix: m,
                 input,
                 output,
                 total: n,
             };
 
-            let path = path.join(format!("{}.dot", actually_correct_cnt as u32));
-            if path.exists() {
+            let graph_path = path.join("adjacency_matrix.txt");
+            save_graph(graph_path, &g);
+
+            let graph_path = path.join(format!("graph.dot"));
+            if graph_path.exists() {
                 continue 'outer;
             }
-            actually_correct_cnt += 1;
-            let mut f = File::create(path).unwrap();
+            let mut f = File::create(graph_path).unwrap();
             render(&g, &mut f);
         }
     }
+    // let path = path.join("index.txt");
+    // std::fs::write(
+    //     path,
+    //     format!("total_graphs={}", actually_correct_cnt).as_bytes(),
+    // )
+    // .unwrap();
     return Ok(());
 }
 
-fn print(m: &Vec<Vec<u8>>) {
+pub fn print_matrix(m: &Vec<Vec<u8>>) {
     for x in m {
         for y in x {
             print!(" {}", y);

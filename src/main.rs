@@ -1,5 +1,5 @@
 use rand::{prelude::*, Error};
-use std::path::PathBuf;
+use std::{collections::VecDeque, iter::zip, path::PathBuf};
 
 use base::Graph;
 use rand_chacha::ChaCha8Rng;
@@ -21,13 +21,13 @@ pub fn identity(x: f64) -> f64 {
 }
 
 pub fn sigmoid(x: f64) -> f64 {
-    return 1.0 / (1.0 + -x.exp());
+    return 1.0 / (1.0 + (-x).exp());
 }
 
 // compute the derivative of the sigmoid function ASSUMING that the input "x"
 // has already been passed through the sigmoid  activation function
 pub fn sigmoid_deriv(x: f64) -> f64 {
-    return x * (1.0 - x);
+    return sigmoid(x) * (1.0 - sigmoid(x));
 }
 
 pub fn linear(x: f64) -> f64 {
@@ -49,13 +49,13 @@ impl Perceptron {
         }
         Self {
             weights,
-            activation_function: identity,
+            activation_function: sigmoid,
             learning_rate: 0.01,
             bias: -1.0,
         }
     }
 
-    pub fn calc(&self, input: &[f64]) -> f64 {
+    pub fn weighted_input(&self, input: &[f64]) -> f64 {
         if input.len() != self.weights.len() {
             panic!("Input not equal to number of weights.");
         }
@@ -65,12 +65,17 @@ impl Perceptron {
             result += self.weights.get(i).unwrap() * input.get(i).unwrap();
         }
         result += self.bias;
-        let func = self.activation_function;
-        func(result)
+        result
+    }
+
+    pub fn activation(&self, input: &[f64]) -> f64 {
+        let f = self.activation_function;
+        f(self.weighted_input(input))
     }
 
     pub fn train(&mut self, input: &[f64], expected_output: f64) {
-        let o = self.calc(input);
+        let o = self.activation(input);
+
         for (i, w) in &mut self.weights.iter_mut().enumerate() {
             *w = *w + self.learning_rate * ((expected_output - o) * input.get(i).unwrap());
         }
@@ -89,7 +94,7 @@ impl MLPTemplate {
         let mut deps: Vec<Vec<u8>> = Vec::new();
 
         for _ in graph.input as usize..graph.adjacency_matrix.len() {
-            deps.push(Vec::new())
+            deps.push(Vec::new());
         }
 
         // Build a list of nodes that each node depends on.
@@ -107,6 +112,7 @@ impl MLPTemplate {
         for d in &deps {
             perceptrons.push(Perceptron::new(d.len() as u8))
         }
+        println!("preceptrons {:?}", perceptrons);
 
         Self {
             graph,
@@ -137,6 +143,7 @@ impl MLPTemplate {
         MLP {
             perceptrons,
             deps,
+            learning_rate: 0.01,
             graph,
         }
     }
@@ -145,21 +152,192 @@ impl MLPTemplate {
 struct MLP {
     perceptrons: Vec<Perceptron>,
     deps: Vec<Vec<u8>>,
+    learning_rate: f64,
     graph: Graph,
 }
 
 impl MLP {
-    pub fn train(&mut self, input: &[f64], expected_output: &[f64]) {
-        let mut output = self.calc(input);
-        let out_nodes = output.split_off((output.len() - self.graph.output as usize) as usize);
-        // let mut errors = Vec::new();
-        // errors.push(out_nodes.get(i).unwrap() - expected_output.get(i).unwrap());
+    pub fn train(&mut self, dataset: &[(&[f64], &[f64])]) {
+        let mut mae = 0.0;
+        let mut cost_deriv_weight: Vec<Vec<f64>> = Vec::with_capacity(self.perceptrons.len());
+        let mut cost_deriv_bias: Vec<f64> = Vec::with_capacity(self.perceptrons.len());
+        for _ in &self.perceptrons {
+            cost_deriv_bias.push(0.0);
+            cost_deriv_weight.push(Vec::new());
+        }
+
+        for (input, expected_output) in dataset {
+            let (mut all_activations, mut all_weighted_input) = self.calc(input);
+            println!("all_activations       {:?}", all_activations);
+            let mut inner_activations = all_activations.clone();
+            let output_activations = inner_activations
+                .split_off((all_activations.len() - self.graph.output as usize) as usize);
+
+            println!("all_weighted_inputs   {:?}", all_weighted_input);
+            let mut inner_weighted_input = all_weighted_input.clone();
+            let output_weighted_input = inner_weighted_input
+                .split_off((all_weighted_input.len() - self.graph.output as usize) as usize);
+
+            println!("inner_activations     {:?}", inner_activations);
+            println!("inner_weighted_input  {:?}", inner_weighted_input);
+            println!("output_activations    {:?}", output_activations);
+            println!("output_weighted_input {:?}", output_weighted_input);
+            println!("expected_output       {:?}", expected_output);
+
+            {
+                // Compute cost function over all training samples, stored in mae
+                let mut errors = Vec::new();
+                for (o, e) in output_activations.iter().zip(*expected_output) {
+                    errors.push((o - e).powi(2));
+                }
+
+                println!("errors {:?}", errors);
+                let mut length = 0.0;
+                for e in errors {
+                    length += e;
+                }
+                length = length.sqrt();
+                mae += length.powi(2);
+            }
+
+            let mut past_delta_times_weight: Vec<Vec<f64>> = Vec::new();
+            for _ in &self.perceptrons {
+                past_delta_times_weight.push(Vec::new());
+            }
+            let mut node_stack: VecDeque<usize> = VecDeque::new();
+            // let mut nodes_to_process: BTreeMap<usize, Vec<f64> = Vec::new();
+            // Get the error from the output neurons (the last 'layer')
+            {
+                for (i, ((o, e), z)) in output_activations
+                    .iter()
+                    .zip(*expected_output)
+                    .zip(output_weighted_input)
+                    .enumerate()
+                {
+                    let node_index = (self.perceptrons.len() - self.graph.output as usize) + i;
+
+                    // o - e is the derivative of the cost function with respect to
+                    // the neuron activations of the last layer
+                    let derivative = o - e;
+                    let delta = derivative * sigmoid_deriv(z);
+                    *cost_deriv_bias.get_mut(node_index).unwrap() += delta;
+
+                    // Get outputs ancestors
+                    let out_node_deps = self.deps.get(node_index).unwrap();
+                    let mut weights = Vec::new();
+                    for (i, a) in out_node_deps.iter().enumerate() {
+                        if a < &self.graph.input {
+                            weights.push(input.get(*a as usize).unwrap() * delta);
+                        } else {
+                            weights.push(
+                                all_activations
+                                    .get((*a - self.graph.input) as usize)
+                                    .unwrap()
+                                    * delta,
+                            );
+                            let weight = self
+                                .perceptrons
+                                .get(node_index)
+                                .unwrap()
+                                .weights
+                                .get(i)
+                                .unwrap();
+                            past_delta_times_weight
+                                .get_mut((*a - self.graph.input) as usize)
+                                .unwrap()
+                                .push(weight * delta);
+                            node_stack.push_back((*a - self.graph.input) as usize);
+                        }
+                    }
+
+                    let existing_w = cost_deriv_weight.get_mut(node_index).unwrap();
+                    if existing_w.is_empty() {
+                        *existing_w = weights;
+                    } else {
+                        for (e, w) in existing_w.into_iter().zip(weights) {
+                            *e += w;
+                        }
+                    }
+                }
+            };
+
+            while let Some(node_index) = node_stack.pop_front() {
+                let weighted_input = *all_weighted_input.get(node_index).unwrap();
+
+                // Get outputs of decendants
+                let deltas_from_future = past_delta_times_weight.get(node_index).unwrap();
+                let mut propagated_error_sum = 0.0;
+                for d in deltas_from_future {
+                    propagated_error_sum += *d;
+                }
+                let delta = propagated_error_sum * sigmoid_deriv(weighted_input);
+                *cost_deriv_bias.get_mut(node_index).unwrap() += delta;
+
+                let out_node_deps = self.deps.get(node_index).unwrap();
+                let mut weights = Vec::new();
+                for (i, a) in out_node_deps.iter().enumerate() {
+                    if a < &self.graph.input {
+                        weights.push(input.get(*a as usize).unwrap() * delta);
+                    } else {
+                        weights.push(
+                            all_activations
+                                .get((*a - self.graph.input) as usize)
+                                .unwrap()
+                                * delta,
+                        );
+                        let weight = self
+                            .perceptrons
+                            .get(node_index)
+                            .unwrap()
+                            .weights
+                            .get(i)
+                            .unwrap();
+                        past_delta_times_weight
+                            .get_mut((a - self.graph.input) as usize)
+                            .unwrap()
+                            .push(weight * delta);
+                        node_stack.push_back((*a - self.graph.input) as usize);
+                    }
+                }
+                let existing_w = cost_deriv_weight.get_mut(node_index).unwrap();
+                if existing_w.is_empty() {
+                    *existing_w = weights;
+                } else {
+                    for (e, w) in existing_w.into_iter().zip(weights) {
+                        *e += w;
+                    }
+                }
+            }
+
+            // Update weights
+            println!("cost_deriv_weight {:?}", cost_deriv_weight);
+            println!("cost_deriv_bias   {:?}", cost_deriv_bias);
+
+            println!();
+        }
+        mae /= 2.0 * dataset.len() as f64;
+        println!("cost_deriv_weight {:?}", cost_deriv_weight);
+        println!("cost_deriv_bias   {:?}", cost_deriv_bias);
+        println!("mae {}", mae);
+
+        for (p, (w, b)) in self
+            .perceptrons
+            .iter_mut()
+            .zip(zip(cost_deriv_weight, cost_deriv_bias))
+        {
+            for (old, new) in p.weights.iter_mut().zip(w) {
+                *old = *old - ((self.learning_rate / dataset.len() as f64) * new);
+            }
+            p.bias += p.bias - ((self.learning_rate / dataset.len() as f64) * b);
+        }
     }
 
-    pub fn calc(&mut self, input: &[f64]) -> Vec<f64> {
-        let mut results: Vec<f64> = Vec::new();
+    pub fn calc(&mut self, input: &[f64]) -> (Vec<f64>, Vec<f64>) {
+        let mut activations: Vec<f64> = Vec::new();
+        let mut weighted_inputs: Vec<f64> = Vec::new();
         for _ in 0..self.perceptrons.len() {
-            results.push(0.0);
+            activations.push(0.0);
+            weighted_inputs.push(0.0);
         }
         for (i, p) in &mut self.perceptrons.iter().enumerate() {
             let mut p_input: Vec<f64> = Vec::new();
@@ -168,18 +346,19 @@ impl MLP {
                 if d < &self.graph.input {
                     p_input.push(*input.get(*d as usize).unwrap());
                 } else {
-                    p_input.push(*results.get((d - &self.graph.input) as usize).unwrap());
+                    p_input.push(*activations.get((d - &self.graph.input) as usize).unwrap());
                 }
             }
-            let o = results.get_mut(i).unwrap();
-            *o = p.calc(&p_input);
+            let o = activations.get_mut(i).unwrap();
+            *o = p.activation(&p_input);
+            let o = weighted_inputs.get_mut(i).unwrap();
+            *o = p.weighted_input(&p_input);
         }
-
-        return results;
+        return (activations, weighted_inputs);
     }
 
     pub fn predict(&mut self, input: &[f64]) -> Vec<f64> {
-        let mut results = self.calc(input);
+        let (mut results, _) = self.calc(input);
         results.split_off((results.len() - self.graph.output as usize) as usize)
     }
 
@@ -199,17 +378,21 @@ fn main() {
     let mlp_template = MLPTemplate::new(g, 1);
     let mut mlp = mlp_template.build_simple();
     let dataset = &[
-        (&[1.0, 1.0], &[1.0]),
-        (&[0.0, 0.0], &[0.0]),
-        (&[0.0, 1.0], &[0.0]),
-        (&[1.0, 0.0], &[0.0]),
+        (&[1.0, 1.0][..], &[1.0][..]),
+        (&[0.0, 0.0][..], &[0.0][..]),
+        (&[0.0, 1.0][..], &[0.0][..]),
+        (&[1.0, 0.0][..], &[0.0][..]),
     ];
 
-    for _ in 0..1 {
-        for (input, expected) in dataset {
-            mlp.train(*input, *expected);
-        }
-    }
+    mlp.train(dataset);
+    let input = &[1.0, 1.0];
+    let expected = &[1.0];
+    let output = mlp.predict(input);
+    println!(
+        "input: {:?}, expected: {:?}, output: {:?}",
+        input, expected, output
+    );
+    mlp.train(dataset);
 
     let input = &[1.0, 1.0];
     let expected = &[1.0];
@@ -245,10 +428,10 @@ fn test_perceptron_and() {
         (&[1.0, 0.0], 0.0),
     ];
     let p = train_perceptron(dataset);
-    assert_eq!(p.calc(&[0.0, 0.0]), 0.0);
-    assert_eq!(p.calc(&[1.0, 0.0]), 0.0);
-    assert_eq!(p.calc(&[0.0, 1.0]), 0.0);
-    assert_eq!(p.calc(&[1.0, 1.0]), 1.0);
+    assert_eq!(p.activation(&[0.0, 0.0]), 0.0);
+    assert_eq!(p.activation(&[1.0, 0.0]), 0.0);
+    assert_eq!(p.activation(&[0.0, 1.0]), 0.0);
+    assert_eq!(p.activation(&[1.0, 1.0]), 1.0);
 }
 
 #[test]
@@ -260,8 +443,8 @@ fn test_perceptron_or() {
         (&[0.0, 0.0], 0.0),
     ];
     let p = train_perceptron(dataset);
-    assert_eq!(p.calc(&[0.0, 0.0]), 0.0);
-    assert_eq!(p.calc(&[1.0, 0.0]), 1.0);
-    assert_eq!(p.calc(&[1.0, 1.0]), 1.0);
-    assert_eq!(p.calc(&[0.0, 1.0]), 1.0);
+    assert_eq!(p.activation(&[0.0, 0.0]), 0.0);
+    assert_eq!(p.activation(&[1.0, 0.0]), 1.0);
+    assert_eq!(p.activation(&[1.0, 1.0]), 1.0);
+    assert_eq!(p.activation(&[0.0, 1.0]), 1.0);
 }

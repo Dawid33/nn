@@ -54,7 +54,7 @@ impl<'a> dot::Labeller<'a, Node, Edge> for Edges {
         if *n < self.input as isize {
             return dot::Id::new(format!("in{}", n)).unwrap();
         } else if *n >= (self.total - self.output) as isize {
-            return dot::Id::new(format!("out{}", n)).unwrap();
+            return dot::Id::new(format!("N{}_out", n)).unwrap();
         } else {
             return dot::Id::new(format!("N{}", n)).unwrap();
         }
@@ -154,7 +154,7 @@ pub fn read_graph(path: PathBuf) -> Graph {
 //
 // Step 3: Check if the graph is connected and reject it if its not.
 pub fn gen_matrices(input: u8, output: u8) {
-    for i in 1..4 {
+    for i in 0..4 {
         std::fs::create_dir_all(format!("graphs/{}", i)).unwrap();
         let path = PathBuf::from(format!("graphs/{}", i));
         if let Err(_) = gen_matrices_inner(input, i, output, path) {
@@ -244,6 +244,7 @@ pub fn gen_matrices_inner(
                     // x >= n instead of x > n because x is zero indexed whereas
                     // n - output starts at 1 since it n denotes the number
                     // of vertices.
+
                     if (x >= n - output || x < input) && *cell == 1 {
                         continue 'outer;
                     }

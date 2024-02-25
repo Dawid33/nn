@@ -168,21 +168,13 @@ impl MLP {
 
         for (input, expected_output) in dataset {
             let (mut all_activations, mut all_weighted_input) = self.calc(input);
-            println!("all_activations       {:?}", all_activations);
             let mut inner_activations = all_activations.clone();
             let output_activations = inner_activations
                 .split_off((all_activations.len() - self.graph.output as usize) as usize);
 
-            println!("all_weighted_inputs   {:?}", all_weighted_input);
             let mut inner_weighted_input = all_weighted_input.clone();
             let output_weighted_input = inner_weighted_input
                 .split_off((all_weighted_input.len() - self.graph.output as usize) as usize);
-
-            println!("inner_activations     {:?}", inner_activations);
-            println!("inner_weighted_input  {:?}", inner_weighted_input);
-            println!("output_activations    {:?}", output_activations);
-            println!("output_weighted_input {:?}", output_weighted_input);
-            println!("expected_output       {:?}", expected_output);
 
             {
                 // Compute cost function over all training samples, stored in mae
@@ -326,9 +318,9 @@ impl MLP {
             .zip(zip(cost_deriv_weight, cost_deriv_bias))
         {
             for (old, new) in p.weights.iter_mut().zip(w) {
-                *old = *old - ((self.learning_rate / dataset.len() as f64) * new);
+                *old = *old + ((self.learning_rate / dataset.len() as f64) * new);
             }
-            p.bias += p.bias - ((self.learning_rate / dataset.len() as f64) * b);
+            p.bias += p.bias + ((self.learning_rate / dataset.len() as f64) * b);
         }
     }
 
@@ -374,7 +366,7 @@ fn main() {
     base::gen_matrices(2, 1);
     println!("Done");
 
-    let g = base::read_graph(PathBuf::from("graphs/3/99/adjacency_matrix.txt"));
+    let g = base::read_graph(PathBuf::from("graphs/1/1/adjacency_matrix.txt"));
     let mlp_template = MLPTemplate::new(g, 1);
     let mut mlp = mlp_template.build_simple();
     let dataset = &[
@@ -392,8 +384,8 @@ fn main() {
         "input: {:?}, expected: {:?}, output: {:?}",
         input, expected, output
     );
-    mlp.train(dataset);
 
+    mlp.train(dataset);
     let input = &[1.0, 1.0];
     let expected = &[1.0];
     let output = mlp.predict(input);

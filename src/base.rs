@@ -154,7 +154,7 @@ pub fn read_graph(path: PathBuf) -> Graph {
 //
 // Step 3: Check if the graph is connected and reject it if its not.
 pub fn gen_matrices(input: u8, output: u8) {
-    for i in 0..4 {
+    for i in 0..3 {
         std::fs::create_dir_all(format!("graphs/{}", i)).unwrap();
         let path = PathBuf::from(format!("graphs/{}", i));
         if let Err(_) = gen_matrices_inner(input, i, output, path) {
@@ -264,6 +264,11 @@ pub fn gen_matrices_inner(
         // vertex and finish at some output vertex. Check off which nodes have
         // been traversed during this search and if its < n then the graph isn't
         // connected.
+
+        // TODO: Important! make sure that there are some nodes in common
+        //       between all paths from input to some output. It is otherwise
+        //       possible to have a disconnected graph where each input reaches
+        //       some output but the paths don't cross.
 
         // Start from all input vertices
         let mut traversed_nodes: Vec<usize> = Vec::new();

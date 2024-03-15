@@ -1,1 +1,1 @@
-cargo run --color always 2>&1 | less -R +F
+cargo run --color always possum.csv age 2>&1 | less -R +F

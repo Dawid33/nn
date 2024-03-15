@@ -11,17 +11,17 @@ type Node = isize;
 type Edge = (isize, isize);
 pub struct Edges {
     edges: Vec<Edge>,
-    input: u8,
-    output: u8,
-    total: u8,
+    input: u64,
+    output: u64,
+    total: u64,
 }
 
 #[derive(Clone)]
 pub struct Graph {
     pub adjacency_matrix: Vec<Vec<u8>>,
-    pub input: u8,
-    pub output: u8,
-    pub total: u8,
+    pub input: u64,
+    pub output: u64,
+    pub total: u64,
 }
 
 pub fn render<W: Write>(g: &Graph, output: &mut W) {
@@ -116,11 +116,11 @@ pub fn read_graph(path: PathBuf) -> Graph {
     if let Some(start_line) = &iter.next() {
         let mut nums = start_line.split(' ');
         if let Some(value) = nums.next() {
-            input = u8::from_str_radix(value, 10).unwrap();
+            input = u64::from_str_radix(value, 10).unwrap();
         }
 
         if let Some(value) = nums.next() {
-            output = u8::from_str_radix(value, 10).unwrap();
+            output = u64::from_str_radix(value, 10).unwrap();
         }
     }
 
@@ -137,11 +137,20 @@ pub fn read_graph(path: PathBuf) -> Graph {
     }
 
     Graph {
-        total: matrix.len() as u8,
+        total: matrix.len() as u64,
         adjacency_matrix: matrix,
         input,
         output,
     }
+}
+
+pub struct GraphDealer {}
+
+impl GraphDealer {
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn get_next_graph(&mut self) -> Graph {}
 }
 
 // Step 1: Get all possible permutations of a graph by getting getting the
@@ -153,19 +162,20 @@ pub fn read_graph(path: PathBuf) -> Graph {
 // - inputs cannot connect directly to outputs
 //
 // Step 3: Check if the graph is connected and reject it if its not.
-pub fn gen_matrices(input: u8, output: u8) {
-    for i in 0..3 {
+pub fn gen_matrices(input: u64, output: u64) {
+    for i in 1..2 {
         std::fs::create_dir_all(format!("graphs/{}", i)).unwrap();
         let path = PathBuf::from(format!("graphs/{}", i));
+        println!("Generating graphs with {} inner nodes", i);
         if let Err(_) = gen_matrices_inner(input, i, output, path) {
             break;
         }
     }
 }
 pub fn gen_matrices_inner(
-    input: u8,
-    inner: u8,
-    output: u8,
+    input: u64,
+    inner: u64,
+    output: u64,
     path: PathBuf,
 ) -> Result<(), Box<dyn Error>> {
     let n = inner + input + output;
@@ -209,17 +219,17 @@ pub fn gen_matrices_inner(
         }
         index += 1 as u32;
 
-        if std::time::Instant::now().duration_since(matrix_creation_start)
-            > std::time::Duration::from_secs(10)
-        {
-            println!(
-                "Matrix Creation for {} inner nodes is taking more than 5 seconds, aborting.",
-                inner
-            );
-            return Err(Box::new(SimpleError::new(
-                "Took too long generating matrices.",
-            )));
-        }
+        // if std::time::Instant::now().duration_since(matrix_creation_start)
+        //     > std::time::Duration::from_secs(30)
+        // {
+        //     println!(
+        //         "Matrix Creation for {} inner nodes is taking more than 30 seconds, aborting.",
+        //         inner
+        //     );
+        //     return Err(Box::new(SimpleError::new(
+        //         "Took too long generating matrices.",
+        //     )));
+        // }
 
         let mut m = empty.clone();
         let mut cnt = 0;

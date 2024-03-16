@@ -7,13 +7,14 @@ use graph::{render, save_graph, Graph};
 use log::warn;
 use num_bigint::BigUint;
 
+use crate::mlp::MLPTemplate;
+
 mod graph;
 mod mlp;
 
 struct Dataset {
     name: String,
-    predictors: Vec<Vec<f64>>,
-    response: Vec<f64>,
+    data: Vec<(Vec<f64>, Vec<f64>)>,
 }
 
 fn dump_graph(id: BigUint, g: &Graph) {
@@ -33,9 +34,9 @@ fn let_er_rip(d: Dataset) {
     let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
         Ok(g) => g,
         Err(_) => graph::GraphDealer::new(
-            d.predictors.get(0).unwrap().len() as u64,
+            d.data.get(0).unwrap().0.len() as u64,
             1,
-            &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
             "partitions.toml".to_string(),
         ),
     };
@@ -48,13 +49,11 @@ fn let_er_rip(d: Dataset) {
         println!("Dumping graph id {}/{}", inner, id);
         dump_graph(id, &g);
 
-        // let mlp_template = mlp::MLPTemplate::new(g, 1);
+        // let g = graph::read_graph(PathBuf::from("graphs/18/1316403645856964833723975346045880403986188692506863890678888570/adjacency_matrix.txt"));
+        // let mlp_template = MLPTemplate::new(g, 1);
         // let mut mlp = mlp_template.build_simple();
-
-        // for _ in 0..100000 {
-        // mlp.train_batch(dataset);
-        // }
-        // eval_and_dump();
+        // mlp.train(d, 100);
+        eval_and_dump();
     }
 }
 
@@ -74,17 +73,16 @@ fn main() {
         let reponse_index = headers.iter().position(|x| args[2] == x).unwrap();
         println!("headers: {:?}", headers);
 
-        let mut p = Vec::new();
-        let mut r = Vec::new();
+        let mut data = Vec::new();
         for result in csv_reader.records() {
+            let mut r = Vec::new();
             let mut record: Vec<f64> = result.unwrap().iter().map(|x| x.parse().unwrap()).collect();
             r.push(record.remove(reponse_index));
-            p.push(record);
+            data.push((record, r));
         }
         Dataset {
             name: String::from(file_path.file_name().unwrap().to_str().unwrap()),
-            predictors: p,
-            response: r,
+            data,
         }
     } else {
         panic!("File '{}' does not exist.", args[0]);

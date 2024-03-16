@@ -181,6 +181,7 @@ impl GraphDealer {
         let s = std::fs::read_to_string(path)?;
         Ok(toml::from_str(&s)?)
     }
+
     pub fn new(input: u64, output: u64, inner_range: &[u64], save_path: String) -> Self {
         if input < 1 {
             panic!("Not enough input vertices specified.");
@@ -189,6 +190,8 @@ impl GraphDealer {
         if output < 1 {
             panic!("Not enough output vertices specified.");
         }
+
+        println!("inputs, outputs: {}, {}", input, output);
 
         let start = BigUint::from_slice(&[1]);
         let mut graphs = Vec::new();
@@ -247,6 +250,7 @@ impl GraphDealer {
         let start = self.current_graph;
         // println!("CURRENT GRAPH -> {}", self.current_graph);
         loop {
+            let graphs_len = self.graphs.len();
             let g = self.graphs.get_mut(self.current_graph).unwrap();
             let start_parition = g.current_parition;
             loop {
@@ -280,7 +284,7 @@ impl GraphDealer {
                         }
                         if g.current_parition == start_parition {
                             self.current_graph += 1;
-                            if self.current_graph >= self.graphs.len() {
+                            if self.current_graph >= graphs_len {
                                 self.current_graph = 0;
                             }
                             break;
@@ -288,15 +292,23 @@ impl GraphDealer {
                     }
                 };
             }
+            drop(g);
+            let mut done = true;
+            'outer: for g in &self.graphs {
+                for p in &g.paritions {
+                    if p.current_index != p.final_index_exclusive.clone() - 1 as u32 {
+                        done = false;
+                        break 'outer;
+                    }
+                }
+            }
+            if done {
+                return Err(SimpleError::new("Iterated over all graphs and paritions."));
+            }
 
             self.current_graph += 1;
             if self.current_graph >= self.graphs.len() {
                 self.current_graph = 0;
-            }
-            if self.current_graph == start {
-                return Err(SimpleError::new(
-                    "Iterated over all graphs and paritions cannot generate a new graph.",
-                ));
             }
         }
     }

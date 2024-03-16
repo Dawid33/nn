@@ -4,16 +4,17 @@ use std::io::Write;
 use std::{collections::VecDeque, iter::zip, path::PathBuf};
 
 use crate::graph::Graph;
+use crate::Dataset;
 use rand_chacha::ChaCha8Rng;
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
 fn dumpln(s: &str) {
-    // let mut file = OpenOptions::new()
-    //     .create(true)
-    //     .append(true)
-    //     .open("out.txt")
-    //     .unwrap();
-    // write!(file, "{}\n", s).unwrap();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("out.txt")
+        .unwrap();
+    write!(file, "{}\n", s).unwrap();
 }
 
 type ActivationFn = fn(f64) -> f64;
@@ -288,10 +289,10 @@ impl MLP {
         {
             // Index of the current perceptron
             let node_index = (self.perceptrons.len() - self.graph.output as usize) + i;
-            dumpln(&format!(
-                "+  OUTPUT NODE: {}",
-                node_index + self.graph.input as usize
-            ));
+            // dumpln(&format!(
+            //     "+  OUTPUT NODE: {}",
+            //     node_index + self.graph.input as usize
+            // ));
 
             let partial_deriv = self
                 .perceptrons
@@ -302,32 +303,32 @@ impl MLP {
             // This is the derivative of the cost function with respect to
             // the neuron activations of the last layer
             let cost_deriv = activation - expected_activation;
-            dumpln(&format!(
-                "+ cost_deriv = activation - expected_activation: {} = {} - {}",
-                cost_deriv, activation, expected_activation
-            ));
+            // dumpln(&format!(
+            //     "+ cost_deriv = activation - expected_activation: {} = {} - {}",
+            //     cost_deriv, activation, expected_activation
+            // ));
             // This is the error of the neuron.
             let error = cost_deriv * partial_deriv(*activation);
             change.bias[node_index] = error;
-            dumpln(&format!("  change in bias : {}", change.bias[node_index]));
+            // dumpln(&format!("  change in bias : {}", change.bias[node_index]));
             change.weight[node_index] = apply_error_for_weight_change(
                 node_index,
                 error,
                 &mut node_stack,
                 &mut past_error_times_weight,
             );
-            dumpln(&format!(
-                "+  change in weight: {:?}",
-                change.weight[node_index]
-            ));
+            // dumpln(&format!(
+            //     "+  change in weight: {:?}",
+            //     change.weight[node_index]
+            // ));
         }
 
         // Backpropagate the error, processing each ancestor.
         while let Some(node_index) = node_stack.pop_front() {
-            dumpln(&format!(
-                "- INNER NODE: {}",
-                node_index + self.graph.input as usize
-            ));
+            // dumpln(&format!(
+            //     "- INNER NODE: {}",
+            //     node_index + self.graph.input as usize
+            // ));
             // Weighted input for this current node.
             let activation = *activations.get(node_index).unwrap();
 
@@ -338,36 +339,44 @@ impl MLP {
                 .activation_partial_dervivative;
 
             let errors_from_decendants = past_error_times_weight.get(node_index).unwrap();
-            dumpln(&format!(
-                "- errors_from_decendants: {:?}",
-                errors_from_decendants
-            ));
+            // dumpln(&format!(
+            //     "- errors_from_decendants: {:?}",
+            //     errors_from_decendants
+            // ));
             let mut total = 0.0;
             for e in errors_from_decendants {
                 total += e;
             }
             let error = total * partial_deriv(activation);
-            dumpln(&format!(
-                "- error = total - partial_deriv(activation): {} = {} - {}, activation: {}",
-                error,
-                total,
-                partial_deriv(activation),
-                activation
-            ));
+            // dumpln(&format!(
+            //     "- error = total - partial_deriv(activation): {} = {} - {}, activation: {}",
+            //     error,
+            //     total,
+            //     partial_deriv(activation),
+            //     activation
+            // ));
             change.bias[node_index] = error;
-            dumpln(&format!("- change in bias: {:?}", change.bias[node_index]));
+            // dumpln(&format!("- change in bias: {:?}", change.bias[node_index]));
             change.weight[node_index] = apply_error_for_weight_change(
                 node_index,
                 error,
                 &mut node_stack,
                 &mut past_error_times_weight,
             );
-            dumpln(&format!(
-                "- change in weight: {:?}",
-                change.weight[node_index]
-            ));
+            // dumpln(&format!(
+            //     "- change in weight: {:?}",
+            //     change.weight[node_index]
+            // ));
         }
         return (change, partial_mae);
+    }
+
+    pub fn train(&mut self, dataset: Dataset, epochs: u64) {
+        let d: Vec<(&[f64], &[f64])> = dataset.data.iter().map(|(x, y)| (&x[..], &y[..])).collect();
+        for i in 0..epochs {
+            println!("EPOCH: {}", i);
+            self.train_batch(&d[..]);
+        }
     }
 
     pub fn train_batch(&mut self, batch: &[(&[f64], &[f64])]) -> f64 {
@@ -378,12 +387,12 @@ impl MLP {
         for (_, (input, expected)) in batch.iter().enumerate() {
             let (batch_change, partial_mae) = self.backprop(input, expected);
             mae += partial_mae;
-            dumpln(&format!("Weights delta {:?}", batch_change.weight));
+            // dumpln(&format!("Weights delta {:?}", batch_change.weight));
             change.add(batch_change);
         }
         mae /= 2.0 * batch.len() as f64;
-        dumpln(&format!("Total weights delta {:?}", change.weight));
-        dumpln(&format!("Total bias delta {:?}", change.bias));
+        // dumpln(&format!("Total weights delta {:?}", change.weight));
+        // dumpln(&format!("Total bias delta {:?}", change.bias));
         dumpln(&format!("BATCH MAE: {}", mae));
 
         // Apply updates to each perceptron
@@ -410,8 +419,8 @@ impl MLP {
             weighted_inputs.push(0.0);
         }
         for (i, p) in &mut self.perceptrons.iter().enumerate() {
-            let mut b = String::new();
-            b.push_str(format!("Node: {}, ", i + self.graph.input as usize).as_str());
+            // let mut b = String::new();
+            // b.push_str(format!("Node: {}, ", i + self.graph.input as usize).as_str());
             let mut perceptron_input: Vec<f64> = Vec::new();
             // Get and iterate over a nodes ancestors in order to find the inputs to the current
             // node.
@@ -426,15 +435,15 @@ impl MLP {
             }
             let o = activations.get_mut(i).unwrap();
             *o = p.activation(&perceptron_input);
-            dumpln(&format!(
-                "CALC NODE: {}: {} = {:?} + {} ",
-                i + self.graph.input as usize,
-                *o,
-                perceptron_input,
-                p.bias
-            ));
-            b.push_str(format!("Inputs: {:?}, ", perceptron_input).as_str());
-            b.push_str(format!("Outputs: {}", o).as_str());
+            // dumpln(&format!(
+            //     "CALC NODE: {}: {} = {:?} + {} ",
+            //     i + self.graph.input as usize,
+            //     *o,
+            //     perceptron_input,
+            //     p.bias
+            // ));
+            // b.push_str(format!("Inputs: {:?}, ", perceptron_input).as_str());
+            // b.push_str(format!("Outputs: {}", o).as_str());
             let o = weighted_inputs.get_mut(i).unwrap();
             *o = p.weighted_input(&perceptron_input);
             // dumpln(&b);

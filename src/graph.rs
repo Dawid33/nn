@@ -144,13 +144,15 @@ pub fn read_graph(path: PathBuf) -> Graph {
     }
 }
 
-pub struct GraphDealer {}
+pub struct Partition {
+    current_index: BigUint,
+    final_index_exclusive: BigUint,
+}
 
-impl GraphDealer {
-    pub fn new() -> Self {
-        Self {}
-    }
-    pub fn get_next_graph(&mut self) -> Graph {}
+pub struct GraphType {
+    paritions: Vec<Partition>,
+    current_parition: usize,
+    inner_nodes: u64,
 }
 
 // Step 1: Get all possible permutations of a graph by getting getting the
@@ -162,31 +164,101 @@ impl GraphDealer {
 // - inputs cannot connect directly to outputs
 //
 // Step 3: Check if the graph is connected and reject it if its not.
-pub fn gen_matrices(input: u64, output: u64) {
-    for i in 1..2 {
-        std::fs::create_dir_all(format!("graphs/{}", i)).unwrap();
-        let path = PathBuf::from(format!("graphs/{}", i));
-        println!("Generating graphs with {} inner nodes", i);
-        if let Err(_) = gen_matrices_inner(input, i, output, path) {
-            break;
+pub struct GraphDealer {
+    inputs: u64,
+    outputs: u64,
+    graphs: Vec<GraphType>,
+    current_graph: usize,
+}
+
+impl GraphDealer {
+    pub fn new(input: u64, output: u64, inner_range: &[u64]) -> Self {
+        if input < 1 {
+            panic!("Not enough input vertices specified.");
+        }
+
+        if output < 1 {
+            panic!("Not enough output vertices specified.");
+        }
+
+        let start = BigUint::from_slice(&[1]);
+        let graphs = Vec::new();
+        for i in inner_range {
+            // The total num of matrices is all the permuatations of the edges.
+            // let mut num_of_matrices = BigUint::from_slice(&[0]);
+            // num_of_matrices = num_of_matrices << edges as u32;
+            // let mut index = BigUint::from_slice(&[0]);
+            GraphType {
+                paritions: todo!(),
+                current_parition: todo!(),
+                inner_nodes: todo!(),
+            }
+        }
+        Self {
+            graphs,
+            current_graph: 0,
+        }
+    }
+    pub fn get_next_graph(&mut self) -> Result<Graph, SimpleError> {
+        let start = self.current_graph;
+        loop {
+            let g = self.graphs.get_mut(self.current_graph).unwrap();
+            let start_parition = g.current_parition;
+            loop {
+                let p = g.paritions.get_mut(g.current_parition).unwrap();
+                let graph = match gen_matrix(
+                    self.inputs,
+                    g.inner_nodes,
+                    self.outputs,
+                    p.current_index,
+                    p.final_index_exclusive,
+                ) {
+                    Ok((index, new_g)) => {
+                        p.current_index = index;
+                        g.current_parition += 1;
+                        if g.current_parition >= g.paritions.len() {
+                            g.current_parition = 0;
+
+                            self.current_graph += 1;
+                            if self.current_graph >= self.graphs.len() {
+                                self.current_graph = 0;
+                            }
+                        }
+                        return Ok(new_g);
+                    }
+                    Err((new_index, _)) => {
+                        g.current_parition += 1;
+                        if g.current_parition >= g.paritions.len() {
+                            g.current_parition = 0;
+                        }
+                        if g.current_parition == start_parition {
+                            break;
+                        }
+                    }
+                };
+            }
+
+            self.current_graph += 1;
+            if self.current_graph >= self.graphs.len() {
+                self.current_graph = 0;
+            }
+            if self.current_graph == start {
+                return Err(SimpleError::new(
+                    "Iterated over all graphs and paritions cannot generate a new graph.",
+                ));
+            }
         }
     }
 }
-pub fn gen_matrices_inner(
+
+pub fn gen_matrix(
     input: u64,
     inner: u64,
     output: u64,
-    path: PathBuf,
-) -> Result<(), Box<dyn Error>> {
+    mut index: BigUint,
+    max_index: BigUint,
+) -> Result<(BigUint, Graph), (BigUint, SimpleError)> {
     let n = inner + input + output;
-
-    if input < 1 {
-        // panic!("Not enough input vertices specified.");
-    }
-
-    if output < 1 {
-        panic!("Not enough output vertices specified.");
-    }
 
     // Initialize an n x n  matrix
     let mut empty: Vec<Vec<u8>> = Vec::new();
@@ -198,41 +270,21 @@ pub fn gen_matrices_inner(
         empty.push(row.clone());
     }
 
-    // Calculate the max number of edges in the graph, i.e. the number of
-    // cells in the lower triangle of the matrix
-    let mut edges = 0;
-    for i in 1..n {
-        edges += i;
-    }
-
-    // The total num of matrices is all the permuatations of the edges.
-    let mut num_of_matrices = BigUint::from_slice(&[1]);
-    num_of_matrices = num_of_matrices << edges as u32;
-    let mut index = BigUint::from_slice(&[0]);
-
     let mut actually_correct_cnt = 1;
     let matrix_creation_start = std::time::Instant::now();
 
     'outer: loop {
-        if index >= &num_of_matrices - 1 as u32 {
-            break;
-        }
-        index += 1 as u32;
-
-        // if std::time::Instant::now().duration_since(matrix_creation_start)
-        //     > std::time::Duration::from_secs(30)
-        // {
-        //     println!(
-        //         "Matrix Creation for {} inner nodes is taking more than 30 seconds, aborting.",
-        //         inner
-        //     );
-        //     return Err(Box::new(SimpleError::new(
-        //         "Took too long generating matrices.",
-        //     )));
-        // }
-
         let mut m = empty.clone();
         let mut cnt = 0;
+
+        if index >= max_index - (1 as u32) {
+            return Err((
+                index,
+                SimpleError::new("Couldn't find a matrix within the specified range."),
+            ));
+        }
+
+        index += 1 as u32;
 
         // Iterate over the lower triangle and set it to the current permutation
         // of bits in `index`
@@ -314,38 +366,7 @@ pub fn gen_matrices_inner(
         if traversed_nodes.len() < n as usize {
             continue 'outer;
         }
-
-        // Dump matrix to file system
-        {
-            let path = path.join(format!("{}", actually_correct_cnt));
-            actually_correct_cnt += 1;
-            std::fs::create_dir_all(&path).unwrap();
-
-            let g = Graph {
-                adjacency_matrix: m,
-                input,
-                output,
-                total: n,
-            };
-
-            let graph_path = path.join("adjacency_matrix.txt");
-            save_graph(graph_path, &g);
-
-            let graph_path = path.join(format!("graph.dot"));
-            if graph_path.exists() {
-                continue 'outer;
-            }
-            let mut f = File::create(graph_path).unwrap();
-            render(&g, &mut f);
-        }
     }
-    // let path = path.join("index.txt");
-    // std::fs::write(
-    //     path,
-    //     format!("total_graphs={}", actually_correct_cnt).as_bytes(),
-    // )
-    // .unwrap();
-    return Ok(());
 }
 
 pub fn print_matrix(m: &Vec<Vec<u8>>) {

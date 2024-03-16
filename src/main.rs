@@ -9,21 +9,22 @@ mod graph;
 mod mlp;
 
 struct Dataset {
+    name: String,
     predictors: Vec<Vec<f64>>,
     response: Vec<f64>,
 }
 
 fn let_er_rip(d: Dataset) {
-    let gd = graph::GraphDealer::new();
+    let gd = graph::GraphDealer::new(d.predictors.len() as u64, d.response.len() as u64, &[1, 2]);
 
     // Inner loop, quit on ctrl+c and have ability to resume from where it left off.
     {
-        let g = gd.get_next_graph();
+        let g = gd.get_next_graph().unwrap();
         let mlp_template = mlp::MLPTemplate::new(g, 1);
         let mut mlp = mlp_template.build_simple();
 
         for _ in 0..100000 {
-            mlp.train_batch(dataset);
+            // mlp.train_batch(dataset);
         }
         eval_and_dump();
     }
@@ -38,7 +39,7 @@ fn main() {
     }
 
     let file_path = PathBuf::from(&args[1]);
-    if file_path.exists() {
+    let dataset = if file_path.exists() {
         let f = File::open(file_path).expect(format!("Failed to open file {}", args[1]).as_str());
         let mut csv_reader = csv::ReaderBuilder::new().has_headers(true).from_reader(f);
         let headers = csv_reader.headers().expect("Failed reading headers.");
@@ -51,7 +52,14 @@ fn main() {
             r.push(record.remove(reponse_index));
             p.push(record);
         }
+        Dataset {
+            name: String::from(file_path.file_name().unwrap().to_str().unwrap()),
+            predictors: p,
+            response: r,
+        }
     } else {
         panic!("File '{}' does not exist.", args[0]);
-    }
+    };
+
+    let_er_rip(dataset);
 }

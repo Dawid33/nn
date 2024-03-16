@@ -232,16 +232,16 @@ impl GraphDealer {
     }
     pub fn get_next_graph(&mut self) -> Result<(BigUint, Graph), SimpleError> {
         let start = self.current_graph;
-        println!("CURRENT GRAPH -> {}", self.current_graph);
+        // println!("CURRENT GRAPH -> {}", self.current_graph);
         loop {
             let g = self.graphs.get_mut(self.current_graph).unwrap();
             let start_parition = g.current_parition;
             loop {
                 let p = g.paritions.get_mut(g.current_parition).unwrap();
-                println!(
-                    "Trying graph {} w/ parition {}",
-                    self.current_graph, g.current_parition
-                );
+                // println!(
+                //     "Trying graph {} w/ parition {}",
+                //     self.current_graph, g.current_parition
+                // );
                 match gen_matrix(
                     self.inputs,
                     g.inner_nodes,
@@ -320,9 +320,8 @@ pub fn gen_matrix(
         let mut m = empty.clone();
         let mut cnt = 0;
         if std::time::Instant::now().duration_since(matrix_creation_start)
-            > std::time::Duration::from_secs(2)
+            > std::time::Duration::from_millis(100)
         {
-            println!("Matrix creation parition is taking more than 2 seconds, moving on.");
             return Err((
                 index,
                 SimpleError::new("Took too long generating matrices."),

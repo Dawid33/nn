@@ -1,4 +1,4 @@
 #!/bin/bash
-cat graphs/$1/graph.dot | 
+cat $1/graph.dot | 
   dot -Gmargin=0.7 '-Gbgcolor=#ffffff00' -Gfontname=CascadiaCode -Gcolor=#d5c4a1 -Gfontcolor=#d5c4a1 -Ncolor=#d5c4a1 -Nfontcolor=#d5c4a1 -Ecolor=white -T png | 
   kitty +kitten icat

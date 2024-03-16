@@ -144,11 +144,13 @@ pub fn read_graph(path: PathBuf) -> Graph {
     }
 }
 
+#[derive(Debug)]
 pub struct Partition {
     current_index: BigUint,
     final_index_exclusive: BigUint,
 }
 
+#[derive(Debug)]
 pub struct GraphType {
     paritions: Vec<Partition>,
     current_parition: usize,
@@ -164,6 +166,7 @@ pub struct GraphType {
 // - inputs cannot connect directly to outputs
 //
 // Step 3: Check if the graph is connected and reject it if its not.
+#[derive(Debug)]
 pub struct GraphDealer {
     inputs: u64,
     outputs: u64,
@@ -182,38 +185,71 @@ impl GraphDealer {
         }
 
         let start = BigUint::from_slice(&[1]);
-        let graphs = Vec::new();
+        let mut graphs = Vec::new();
         for i in inner_range {
-            // The total num of matrices is all the permuatations of the edges.
-            // let mut num_of_matrices = BigUint::from_slice(&[0]);
-            // num_of_matrices = num_of_matrices << edges as u32;
-            // let mut index = BigUint::from_slice(&[0]);
-            GraphType {
-                paritions: todo!(),
-                current_parition: todo!(),
-                inner_nodes: todo!(),
+            let mut partitions = Vec::new();
+            // Divide the search space into paritions.
+            // The total num of matrices is all the permuatations of the edges, also represented by
+            // the nth triangle number squared
+            // This n is the length of the bottom row in the adj matrix lower triangle
+            let n = input + output + i - 1;
+            let n = (n * (n + 1)) / 2;
+            println!("n: {}", n);
+            let max = BigUint::from_slice(&[1]) << n;
+            let step = if &max > &(100 as u32).into() {
+                (&max / 100 as u32) * (20 as u32)
+            } else {
+                max.clone() + 1 as u32
+            };
+            let mut cnt = BigUint::from_slice(&[0]);
+            while &cnt < &max {
+                if &cnt + &step >= max {
+                    partitions.push(Partition {
+                        current_index: cnt.clone(),
+                        final_index_exclusive: max.clone() + (1 as u32),
+                    });
+                    break;
+                } else {
+                    partitions.push(Partition {
+                        current_index: cnt.clone(),
+                        final_index_exclusive: (&cnt + &step).clone(),
+                    });
+                    cnt += step.clone();
+                }
             }
+            graphs.push(GraphType {
+                paritions: partitions,
+                current_parition: 0,
+                inner_nodes: *i,
+            })
         }
         Self {
             graphs,
             current_graph: 0,
+            inputs: input,
+            outputs: output,
         }
     }
-    pub fn get_next_graph(&mut self) -> Result<Graph, SimpleError> {
+    pub fn get_next_graph(&mut self) -> Result<(BigUint, Graph), SimpleError> {
         let start = self.current_graph;
         loop {
             let g = self.graphs.get_mut(self.current_graph).unwrap();
             let start_parition = g.current_parition;
             loop {
                 let p = g.paritions.get_mut(g.current_parition).unwrap();
-                let graph = match gen_matrix(
+                // println!(
+                //     "Trying graph {} w/ parition {}",
+                //     self.current_graph, g.current_parition
+                // );
+                match gen_matrix(
                     self.inputs,
                     g.inner_nodes,
                     self.outputs,
-                    p.current_index,
-                    p.final_index_exclusive,
+                    p.current_index.clone(),
+                    p.final_index_exclusive.clone(),
                 ) {
                     Ok((index, new_g)) => {
+                        let old = index.clone();
                         p.current_index = index;
                         g.current_parition += 1;
                         if g.current_parition >= g.paritions.len() {
@@ -224,9 +260,10 @@ impl GraphDealer {
                                 self.current_graph = 0;
                             }
                         }
-                        return Ok(new_g);
+                        return Ok((old, new_g));
                     }
                     Err((new_index, _)) => {
+                        p.current_index = new_index;
                         g.current_parition += 1;
                         if g.current_parition >= g.paritions.len() {
                             g.current_parition = 0;
@@ -276,8 +313,18 @@ pub fn gen_matrix(
     'outer: loop {
         let mut m = empty.clone();
         let mut cnt = 0;
+        if std::time::Instant::now().duration_since(matrix_creation_start)
+            > std::time::Duration::from_secs(2)
+        {
+            println!("Matrix creation parition is taking more than 2 seconds, moving on.");
+            return Err((
+                index,
+                SimpleError::new("Took too long generating matrices."),
+            ));
+        }
 
-        if index >= max_index - (1 as u32) {
+        // println!("trying: {}", index);
+        if index >= &max_index - (1 as u32) {
             return Err((
                 index,
                 SimpleError::new("Couldn't find a matrix within the specified range."),
@@ -366,6 +413,15 @@ pub fn gen_matrix(
         if traversed_nodes.len() < n as usize {
             continue 'outer;
         }
+        return Ok((
+            index,
+            Graph {
+                adjacency_matrix: m,
+                input,
+                output,
+                total: n,
+            },
+        ));
     }
 }
 

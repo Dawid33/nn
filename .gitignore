@@ -2,6 +2,7 @@ zig-cache
 zig-out
 graphs
 *.tar.gz
+.~lock*
 
 
 # Added by cargo

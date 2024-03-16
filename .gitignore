@@ -4,6 +4,7 @@ graphs
 *.tar.gz
 .~lock*
 
+perf*
 partitions.toml
 
 # Added by cargo

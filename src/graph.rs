@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
+use std::mem;
 use std::path::PathBuf;
 
 type Node = isize;
@@ -324,20 +325,23 @@ pub fn gen_matrix(
     let n = inner + input + output;
 
     // Initialize an n x n  matrix
-    let mut empty: Vec<Vec<u8>> = Vec::new();
+    let mut m: Vec<Vec<u8>> = Vec::new();
     let mut row: Vec<u8> = Vec::new();
     for _ in 0..n {
         row.push(0);
     }
     for _ in 0..n {
-        empty.push(row.clone());
+        m.push(row.clone());
     }
 
-    let mut actually_correct_cnt = 1;
     let matrix_creation_start = std::time::Instant::now();
 
     'outer: loop {
-        let mut m = empty.clone();
+        for x in &mut m {
+            unsafe {
+                libc::memset(x.as_mut_ptr() as _, 0, x.len() * mem::size_of::<u8>());
+            }
+        }
         let mut cnt = 0;
         if std::time::Instant::now().duration_since(matrix_creation_start)
             > std::time::Duration::from_millis(100)

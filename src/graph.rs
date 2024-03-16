@@ -261,7 +261,6 @@ impl GraphDealer {
                             if self.current_graph >= self.graphs.len() {
                                 self.current_graph = 0;
                             }
-                            break;
                         }
                         return Ok((old, new_g));
                     }

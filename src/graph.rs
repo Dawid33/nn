@@ -238,10 +238,10 @@ impl GraphDealer {
             let start_parition = g.current_parition;
             loop {
                 let p = g.paritions.get_mut(g.current_parition).unwrap();
-                println!(
-                    "Trying graph {} w/ parition {}",
-                    self.current_graph, g.current_parition
-                );
+                // println!(
+                //     "Trying graph {} w/ parition {}",
+                //     self.current_graph, g.current_parition
+                // );
                 match gen_matrix(
                     self.inputs,
                     g.inner_nodes,

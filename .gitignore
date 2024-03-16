@@ -4,6 +4,7 @@ graphs
 *.tar.gz
 .~lock*
 
+paritions.toml
 
 # Added by cargo
 

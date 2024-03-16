@@ -1,6 +1,7 @@
 use num_bigint::BigUint;
-use simple_error::SimpleError;
+use serde::{Deserialize, Serialize};
 
+use simple_error::SimpleError;
 use std::borrow::Cow;
 use std::error::Error;
 use std::fs::File;
@@ -144,13 +145,13 @@ pub fn read_graph(path: PathBuf) -> Graph {
     }
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Partition {
     current_index: BigUint,
     final_index_exclusive: BigUint,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GraphType {
     paritions: Vec<Partition>,
     current_parition: usize,
@@ -166,16 +167,21 @@ pub struct GraphType {
 // - inputs cannot connect directly to outputs
 //
 // Step 3: Check if the graph is connected and reject it if its not.
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GraphDealer {
     inputs: u64,
     outputs: u64,
+    save_path: String,
     graphs: Vec<GraphType>,
     current_graph: usize,
 }
 
 impl GraphDealer {
-    pub fn new(input: u64, output: u64, inner_range: &[u64]) -> Self {
+    pub fn from_file(path: &str) -> Result<GraphDealer, Box<dyn Error>> {
+        let s = std::fs::read_to_string(path)?;
+        Ok(toml::from_str(&s)?)
+    }
+    pub fn new(input: u64, output: u64, inner_range: &[u64], save_path: String) -> Self {
         if input < 1 {
             panic!("Not enough input vertices specified.");
         }
@@ -228,8 +234,15 @@ impl GraphDealer {
             current_graph: 0,
             inputs: input,
             outputs: output,
+            save_path,
         }
     }
+
+    pub fn save_current_paritions(&self) {
+        let p = toml::to_string(&self).unwrap();
+        std::fs::write(&self.save_path, p).unwrap();
+    }
+
     pub fn get_next_graph(&mut self) -> Result<(BigUint, Graph), SimpleError> {
         let start = self.current_graph;
         // println!("CURRENT GRAPH -> {}", self.current_graph);
@@ -238,10 +251,6 @@ impl GraphDealer {
             let start_parition = g.current_parition;
             loop {
                 let p = g.paritions.get_mut(g.current_parition).unwrap();
-                // println!(
-                //     "Trying graph {} w/ parition {}",
-                //     self.current_graph, g.current_parition
-                // );
                 match gen_matrix(
                     self.inputs,
                     g.inner_nodes,
@@ -260,6 +269,7 @@ impl GraphDealer {
                         if self.current_graph >= self.graphs.len() {
                             self.current_graph = 0;
                         }
+                        self.save_current_paritions();
                         return Ok((old, new_g));
                     }
                     Err((new_index, _)) => {

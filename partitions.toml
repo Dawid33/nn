@@ -1,0 +1,348 @@
+inputs = 2
+outputs = 1
+save_path = "partitions.toml"
+current_graph = 10
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 1
+
+[[graphs.paritions]]
+current_index = [38]
+final_index_exclusive = [65]
+
+[[graphs]]
+current_parition = 3
+inner_nodes = 2
+
+[[graphs.paritions]]
+current_index = [199]
+final_index_exclusive = [200]
+
+[[graphs.paritions]]
+current_index = [399]
+final_index_exclusive = [400]
+
+[[graphs.paritions]]
+current_index = [550]
+final_index_exclusive = [600]
+
+[[graphs.paritions]]
+current_index = [600]
+final_index_exclusive = [800]
+
+[[graphs.paritions]]
+current_index = [800]
+final_index_exclusive = [1000]
+
+[[graphs.paritions]]
+current_index = [1000]
+final_index_exclusive = [1025]
+
+[[graphs]]
+current_parition = 3
+inner_nodes = 3
+
+[[graphs.paritions]]
+current_index = [6539]
+final_index_exclusive = [6540]
+
+[[graphs.paritions]]
+current_index = [13079]
+final_index_exclusive = [13080]
+
+[[graphs.paritions]]
+current_index = [16934]
+final_index_exclusive = [19620]
+
+[[graphs.paritions]]
+current_index = [19620]
+final_index_exclusive = [26160]
+
+[[graphs.paritions]]
+current_index = [26160]
+final_index_exclusive = [32700]
+
+[[graphs.paritions]]
+current_index = [32700]
+final_index_exclusive = [32769]
+
+[[graphs]]
+current_parition = 5
+inner_nodes = 4
+
+[[graphs.paritions]]
+current_index = [46546]
+final_index_exclusive = [419420]
+
+[[graphs.paritions]]
+current_index = [474831]
+final_index_exclusive = [838840]
+
+[[graphs.paritions]]
+current_index = [896332]
+final_index_exclusive = [1258260]
+
+[[graphs.paritions]]
+current_index = [1314138]
+final_index_exclusive = [1677680]
+
+[[graphs.paritions]]
+current_index = [1705484]
+final_index_exclusive = [2097100]
+
+[[graphs.paritions]]
+current_index = [2097100]
+final_index_exclusive = [2097153]
+
+[[graphs]]
+current_parition = 4
+inner_nodes = 5
+
+[[graphs.paritions]]
+current_index = [38714]
+final_index_exclusive = [53687080]
+
+[[graphs.paritions]]
+current_index = [53738173]
+final_index_exclusive = [107374160]
+
+[[graphs.paritions]]
+current_index = [107425116]
+final_index_exclusive = [161061240]
+
+[[graphs.paritions]]
+current_index = [161061242]
+final_index_exclusive = [214748320]
+
+[[graphs.paritions]]
+current_index = [214748320]
+final_index_exclusive = [268435400]
+
+[[graphs.paritions]]
+current_index = [268435400]
+final_index_exclusive = [268435457]
+
+[[graphs]]
+current_parition = 5
+inner_nodes = 6
+
+[[graphs.paritions]]
+current_index = [34674]
+final_index_exclusive = [858993452, 3]
+
+[[graphs.paritions]]
+current_index = [859038371, 3]
+final_index_exclusive = [1717986904, 6]
+
+[[graphs.paritions]]
+current_index = [1718031492, 6]
+final_index_exclusive = [2576980356, 9]
+
+[[graphs.paritions]]
+current_index = [2577025313, 9]
+final_index_exclusive = [3435973808, 12]
+
+[[graphs.paritions]]
+current_index = [3435973810, 12]
+final_index_exclusive = [4294967260, 15]
+
+[[graphs.paritions]]
+current_index = [4294967260, 15]
+final_index_exclusive = [1, 16]
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 7
+
+[[graphs.paritions]]
+current_index = [31284]
+final_index_exclusive = [1717986912, 1638]
+
+[[graphs.paritions]]
+current_index = [1718026584, 1638]
+final_index_exclusive = [3435973824, 3276]
+
+[[graphs.paritions]]
+current_index = [3436001348, 3276]
+final_index_exclusive = [858993440, 4915]
+
+[[graphs.paritions]]
+current_index = [859033573, 4915]
+final_index_exclusive = [2576980352, 6553]
+
+[[graphs.paritions]]
+current_index = [2577020414, 6553]
+final_index_exclusive = [4294967264, 8191]
+
+[[graphs.paritions]]
+current_index = [0, 8192]
+final_index_exclusive = [1, 8192]
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 8
+
+[[graphs.paritions]]
+current_index = []
+final_index_exclusive = [2576980364, 1677721]
+
+[[graphs.paritions]]
+current_index = [2576980364, 1677721]
+final_index_exclusive = [858993432, 3355443]
+
+[[graphs.paritions]]
+current_index = [858993432, 3355443]
+final_index_exclusive = [3435973796, 5033164]
+
+[[graphs.paritions]]
+current_index = [3435973796, 5033164]
+final_index_exclusive = [1717986864, 6710886]
+
+[[graphs.paritions]]
+current_index = [1717986864, 6710886]
+final_index_exclusive = [4294967228, 8388607]
+
+[[graphs.paritions]]
+current_index = [4294967228, 8388607]
+final_index_exclusive = [1, 8388608]
+
+[[graphs]]
+current_parition = 4
+inner_nodes = 9
+
+[[graphs.paritions]]
+current_index = [26022]
+final_index_exclusive = [3435973824, 3435973836]
+
+[[graphs.paritions]]
+current_index = [3436007186, 3435973836]
+final_index_exclusive = [2576980352, 2576980377, 1]
+
+[[graphs.paritions]]
+current_index = [2577012562, 2576980377, 1]
+final_index_exclusive = [1717986880, 1717986918, 2]
+
+[[graphs.paritions]]
+current_index = [1717986890, 1717986918, 2]
+final_index_exclusive = [858993408, 858993459, 3]
+
+[[graphs.paritions]]
+current_index = [858993408, 858993459, 3]
+final_index_exclusive = [4294967232, 4294967295, 3]
+
+[[graphs.paritions]]
+current_index = [4294967232, 4294967295, 3]
+final_index_exclusive = [1, 0, 4]
+
+[[graphs]]
+current_parition = 5
+inner_nodes = 10
+
+[[graphs.paritions]]
+current_index = [24373]
+final_index_exclusive = [3435973828, 3435973836, 3276]
+
+[[graphs.paritions]]
+current_index = [3436002661, 3435973836, 3276]
+final_index_exclusive = [2576980360, 2576980377, 6553]
+
+[[graphs.paritions]]
+current_index = [2577009064, 2576980377, 6553]
+final_index_exclusive = [1717986892, 1717986918, 9830]
+
+[[graphs.paritions]]
+current_index = [1718015830, 1717986918, 9830]
+final_index_exclusive = [858993424, 858993459, 13107]
+
+[[graphs.paritions]]
+current_index = [858993426, 858993459, 13107]
+final_index_exclusive = [4294967252, 4294967295, 16383]
+
+[[graphs.paritions]]
+current_index = [4294967252, 4294967295, 16383]
+final_index_exclusive = [1, 0, 16384]
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 11
+
+[[graphs.paritions]]
+current_index = []
+final_index_exclusive = [2576980368, 2576980377, 26843545]
+
+[[graphs.paritions]]
+current_index = [2576980368, 2576980377, 26843545]
+final_index_exclusive = [858993440, 858993459, 53687091]
+
+[[graphs.paritions]]
+current_index = [858993440, 858993459, 53687091]
+final_index_exclusive = [3435973808, 3435973836, 80530636]
+
+[[graphs.paritions]]
+current_index = [3435973808, 3435973836, 80530636]
+final_index_exclusive = [1717986880, 1717986918, 107374182]
+
+[[graphs.paritions]]
+current_index = [1717986880, 1717986918, 107374182]
+final_index_exclusive = [4294967248, 4294967295, 134217727]
+
+[[graphs.paritions]]
+current_index = [4294967248, 4294967295, 134217727]
+final_index_exclusive = [1, 0, 134217728]
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 12
+
+[[graphs.paritions]]
+current_index = []
+final_index_exclusive = [1717986912, 1717986918, 1717986918, 102]
+
+[[graphs.paritions]]
+current_index = [1717986912, 1717986918, 1717986918, 102]
+final_index_exclusive = [3435973824, 3435973836, 3435973836, 204]
+
+[[graphs.paritions]]
+current_index = [3435973824, 3435973836, 3435973836, 204]
+final_index_exclusive = [858993440, 858993459, 858993459, 307]
+
+[[graphs.paritions]]
+current_index = [858993440, 858993459, 858993459, 307]
+final_index_exclusive = [2576980352, 2576980377, 2576980377, 409]
+
+[[graphs.paritions]]
+current_index = [2576980352, 2576980377, 2576980377, 409]
+final_index_exclusive = [4294967264, 4294967295, 4294967295, 511]
+
+[[graphs.paritions]]
+current_index = [4294967264, 4294967295, 4294967295, 511]
+final_index_exclusive = [1, 0, 0, 512]
+
+[[graphs]]
+current_parition = 0
+inner_nodes = 13
+
+[[graphs.paritions]]
+current_index = []
+final_index_exclusive = [858993444, 858993459, 858993459, 3355443]
+
+[[graphs.paritions]]
+current_index = [858993444, 858993459, 858993459, 3355443]
+final_index_exclusive = [1717986888, 1717986918, 1717986918, 6710886]
+
+[[graphs.paritions]]
+current_index = [1717986888, 1717986918, 1717986918, 6710886]
+final_index_exclusive = [2576980332, 2576980377, 2576980377, 10066329]
+
+[[graphs.paritions]]
+current_index = [2576980332, 2576980377, 2576980377, 10066329]
+final_index_exclusive = [3435973776, 3435973836, 3435973836, 13421772]
+
+[[graphs.paritions]]
+current_index = [3435973776, 3435973836, 3435973836, 13421772]
+final_index_exclusive = [4294967220, 4294967295, 4294967295, 16777215]
+
+[[graphs.paritions]]
+current_index = [4294967220, 4294967295, 4294967295, 16777215]
+final_index_exclusive = [1, 0, 0, 16777216]

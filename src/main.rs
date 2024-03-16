@@ -30,11 +30,15 @@ fn dump_graph(id: BigUint, g: &Graph) {
 }
 
 fn let_er_rip(d: Dataset) {
-    let mut gd = graph::GraphDealer::new(
-        d.predictors.get(0).unwrap().len() as u64,
-        1,
-        &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-    );
+    let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
+        Ok(g) => g,
+        Err(_) => graph::GraphDealer::new(
+            d.predictors.get(0).unwrap().len() as u64,
+            1,
+            &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            "partitions.toml".to_string(),
+        ),
+    };
     println!("GraphDealer {:?}", gd);
 
     // Inner loop, quit on ctrl+c and have ability to resume from where it left off.

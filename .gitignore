@@ -3,6 +3,7 @@ zig-out
 graphs
 *.tar.gz
 .~lock*
+venv
 
 perf*
 partitions.toml

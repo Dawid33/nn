@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::{collections::VecDeque, iter::zip, path::PathBuf};
@@ -13,6 +14,15 @@ fn dumpln(s: &str) {
         .create(true)
         .append(true)
         .open("out.txt")
+        .unwrap();
+    write!(file, "{}\n", s).unwrap();
+}
+
+fn dumplnresult(s: &str) {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("output.csv")
         .unwrap();
     write!(file, "{}\n", s).unwrap();
 }
@@ -63,8 +73,8 @@ impl Perceptron {
         }
         Self {
             weights,
-            activation_function: linear,
-            activation_partial_dervivative: linear_deriv,
+            activation_function: sigmoid,
+            activation_partial_dervivative: sigmoid_deriv,
             learning_rate: 0.1,
             bias: 0.5,
         }
@@ -217,6 +227,7 @@ impl MLP {
     // Goal of backprop is to get the rate of change of each weight in the
     // neural network.
     fn backprop(&mut self, input: &[f64], expected: &[f64]) -> (WeightChange, f64) {
+        let mut added: HashSet<usize> = HashSet::new();
         let mut change = WeightChange::new(&self.perceptrons);
         let (activations, weighted_inputs) = self.calc(input);
 
@@ -250,7 +261,8 @@ impl MLP {
         let apply_error_for_weight_change = |node_index: usize,
                                              error: f64,
                                              node_stack: &mut VecDeque<usize>,
-                                             past_error_times_weight: &mut Vec<Vec<f64>>|
+                                             past_error_times_weight: &mut Vec<Vec<f64>>,
+                                             added: &mut HashSet<usize>|
          -> Vec<f64> {
             let node_deps = self.deps.get(node_index).unwrap();
             let mut weight_change = Vec::new();
@@ -277,7 +289,10 @@ impl MLP {
                         .unwrap()
                         .push(weight * error);
 
-                    node_stack.push_back(ancestor_node_index);
+                    if !added.contains(&ancestor_node_index) {
+                        node_stack.push_back(ancestor_node_index);
+                        added.insert(ancestor_node_index);
+                    }
                 }
             }
             weight_change
@@ -316,6 +331,7 @@ impl MLP {
                 error,
                 &mut node_stack,
                 &mut past_error_times_weight,
+                &mut added,
             );
             // dumpln(&format!(
             //     "+  change in weight: {:?}",
@@ -362,6 +378,7 @@ impl MLP {
                 error,
                 &mut node_stack,
                 &mut past_error_times_weight,
+                &mut added,
             );
             // dumpln(&format!(
             //     "- change in weight: {:?}",
@@ -373,9 +390,10 @@ impl MLP {
 
     pub fn train(&mut self, dataset: Dataset, epochs: u64) {
         let d: Vec<(&[f64], &[f64])> = dataset.data.iter().map(|(x, y)| (&x[..], &y[..])).collect();
+        dumplnresult("epoch,mae");
         for i in 0..epochs {
-            println!("EPOCH: {}", i);
-            self.train_batch(&d[..]);
+            let mae = self.train_batch(&d[..]);
+            dumplnresult(format!("{},{}", i, mae).as_str());
         }
     }
 
@@ -393,7 +411,6 @@ impl MLP {
         mae /= 2.0 * batch.len() as f64;
         // dumpln(&format!("Total weights delta {:?}", change.weight));
         // dumpln(&format!("Total bias delta {:?}", change.bias));
-        dumpln(&format!("BATCH MAE: {}", mae));
 
         // Apply updates to each perceptron
         for (perceptron, (weights_change, bias_change)) in self
@@ -407,7 +424,7 @@ impl MLP {
             perceptron.bias -= self.learning_rate * bias_change;
         }
 
-        dumpln("");
+        // dumpln("");
         return mae;
     }
 
@@ -419,7 +436,7 @@ impl MLP {
             weighted_inputs.push(0.0);
         }
         for (i, p) in &mut self.perceptrons.iter().enumerate() {
-            // let mut b = String::new();
+            let mut b = String::new();
             // b.push_str(format!("Node: {}, ", i + self.graph.input as usize).as_str());
             let mut perceptron_input: Vec<f64> = Vec::new();
             // Get and iterate over a nodes ancestors in order to find the inputs to the current
@@ -468,9 +485,6 @@ mod unit_tests {
     use super::*;
     #[test]
     fn test_xor() {
-        if std::path::PathBuf::from("out.txt").exists() {
-            std::fs::remove_file("out.txt").unwrap();
-        }
         println!("Generating Matrices... ");
         graph::gen_matrices(784, 1);
         println!("Done");

@@ -31,35 +31,42 @@ fn dump_graph(id: BigUint, g: &Graph) {
 }
 
 fn let_er_rip(d: Dataset) {
-    let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
-        Ok(g) => g,
-        Err(_) => graph::GraphDealer::new(
-            d.data.get(0).unwrap().0.len() as u64,
-            1,
-            &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "partitions.toml".to_string(),
-        ),
-    };
-    println!("GraphDealer {:?}", gd);
+    // let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
+    //     Ok(g) => g,
+    //     Err(_) => graph::GraphDealer::new(
+    //         d.data.get(0).unwrap().0.len() as u64,
+    //         1,
+    //         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    //         "partitions.toml".to_string(),
+    //     ),
+    // };
 
-    // Inner loop, quit on ctrl+c and have ability to resume from where it left off.
-    loop {
-        let (id, g) = gd.get_next_graph().unwrap();
-        let inner = g.total - g.input - g.output;
-        println!("Dumping graph id {}/{}", inner, id);
-        dump_graph(id, &g);
+    //Inner loop, quit on ctrl+c and have ability to resume from where it left off.
+    // loop {
+    //     let (id, g) = gd.get_next_graph().unwrap();
+    //     let inner = g.total - g.input - g.output;
+    //     println!("Dumping graph id {}/{}", inner, id);
+    //     dump_graph(id, &g);
+    // }
 
-        // let g = graph::read_graph(PathBuf::from("graphs/18/1316403645856964833723975346045880403986188692506863890678888570/adjacency_matrix.txt"));
-        // let mlp_template = MLPTemplate::new(g, 1);
-        // let mut mlp = mlp_template.build_simple();
-        // mlp.train(d, 100);
-        eval_and_dump();
-    }
+    let g = graph::read_graph(PathBuf::from(
+        "graphs/7/17908845392794/adjacency_matrix.txt",
+    ));
+    let mlp_template = MLPTemplate::new(g, 1);
+    let mut mlp = mlp_template.build_simple();
+    mlp.train(d, 100000);
+    eval_and_dump();
 }
 
 fn eval_and_dump() {}
 
 fn main() {
+    if std::path::PathBuf::from("out.txt").exists() {
+        std::fs::remove_file("out.txt").unwrap();
+    }
+    if std::path::PathBuf::from("output.csv").exists() {
+        std::fs::remove_file("output.csv").unwrap();
+    }
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
         panic!("Incorrect number of arguments. Please supply a CSV file path and the name of the column to use as a response variable.");

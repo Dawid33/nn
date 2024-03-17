@@ -207,7 +207,7 @@ impl GraphDealer {
             println!("n: {}", n);
             let max = BigUint::from_slice(&[1]) << n;
             let step = if &max > &(100 as u32).into() {
-                (&max / 100 as u32) * (20 as u32)
+                &max / 1000 as u32
             } else {
                 max.clone() + 1 as u32
             };

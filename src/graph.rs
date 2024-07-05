@@ -194,7 +194,6 @@ impl GraphDealer {
 
         println!("inputs, outputs: {}, {}", input, output);
 
-        let start = BigUint::from_slice(&[1]);
         let mut graphs = Vec::new();
         for i in inner_range {
             let mut partitions = Vec::new();
@@ -206,7 +205,7 @@ impl GraphDealer {
             let n = (n * (n + 1)) / 2;
             println!("n: {}", n);
             let max = BigUint::from_slice(&[1]) << n;
-            let step = if &max > &(100 as u32).into() {
+            let step = if &max > &(5000 as u32).into() {
                 &max / 1000 as u32
             } else {
                 max.clone() + 1 as u32
@@ -248,12 +247,10 @@ impl GraphDealer {
     }
 
     pub fn get_next_graph(&mut self) -> Result<(BigUint, Graph), SimpleError> {
-        let start = self.current_graph;
         // println!("CURRENT GRAPH -> {}", self.current_graph);
         loop {
             let graphs_len = self.graphs.len();
             let g = self.graphs.get_mut(self.current_graph).unwrap();
-            let start_parition = g.current_parition;
             loop {
                 let p = g.paritions.get_mut(g.current_parition).unwrap();
                 match gen_matrix(
@@ -265,14 +262,14 @@ impl GraphDealer {
                 ) {
                     Ok((index, new_g)) => {
                         let old = index.clone();
-                        p.current_index = index;
+                        p.current_index = index + 1 as u8;
                         g.current_parition += 1;
                         if g.current_parition >= g.paritions.len() {
                             g.current_parition = 0;
-                        }
-                        self.current_graph += 1;
-                        if self.current_graph >= self.graphs.len() {
-                            self.current_graph = 0;
+                            self.current_graph += 1;
+                            if self.current_graph >= self.graphs.len() {
+                                self.current_graph = 0;
+                            }
                         }
                         self.save_current_paritions();
                         return Ok((old, new_g));
@@ -282,22 +279,20 @@ impl GraphDealer {
                         g.current_parition += 1;
                         if g.current_parition >= g.paritions.len() {
                             g.current_parition = 0;
-                        }
-                        if g.current_parition == start_parition {
                             self.current_graph += 1;
                             if self.current_graph >= graphs_len {
                                 self.current_graph = 0;
                             }
+                            self.save_current_paritions();
                             break;
                         }
                     }
                 };
             }
-            drop(g);
             let mut done = true;
             'outer: for g in &self.graphs {
                 for p in &g.paritions {
-                    if p.current_index != p.final_index_exclusive.clone() - 1 as u32 {
+                    if p.current_index != p.final_index_exclusive.clone() {
                         done = false;
                         break 'outer;
                     }
@@ -305,11 +300,6 @@ impl GraphDealer {
             }
             if done {
                 return Err(SimpleError::new("Iterated over all graphs and paritions."));
-            }
-
-            self.current_graph += 1;
-            if self.current_graph >= self.graphs.len() {
-                self.current_graph = 0;
             }
         }
     }
@@ -336,6 +326,13 @@ pub fn gen_matrix(
 
     let matrix_creation_start = std::time::Instant::now();
 
+    let mut was_zero = if index > BigUint::from(0 as u8) {
+        index -= 1 as u8;
+        false
+    } else {
+        true
+    };
+
     'outer: loop {
         for x in &mut m {
             unsafe {
@@ -353,14 +350,20 @@ pub fn gen_matrix(
         }
 
         // println!("trying: {}", index);
-        if index >= &max_index - (1 as u32) {
+        if !was_zero {
+            index += 1 as u8;
+        }
+
+        if was_zero {
+            was_zero = false;
+        }
+
+        if index >= max_index {
             return Err((
                 index,
                 SimpleError::new("Couldn't find a matrix within the specified range."),
             ));
         }
-
-        index += 1 as u32;
 
         // Iterate over the lower triangle and set it to the current permutation
         // of bits in `index`

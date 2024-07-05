@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
-use std::io::Write;
+use std::io::{self, Write};
 use std::{collections::VecDeque, iter::zip, path::PathBuf};
 
 use crate::graph::Graph;
@@ -137,7 +137,6 @@ impl MLPTemplate {
         for d in &deps {
             perceptrons.push(Perceptron::new(d.len() as u8))
         }
-        println!("preceptrons {:?}", perceptrons);
 
         Self {
             graph,
@@ -165,8 +164,6 @@ impl MLPTemplate {
             for w in &mut p.weights {
                 *w = rng.gen();
             }
-            println!("weights: {:?}", p.weights);
-            println!("bias: {:?}", p.bias);
         }
 
         let len = perceptrons.len();
@@ -178,7 +175,7 @@ impl MLPTemplate {
         MLP {
             perceptrons,
             deps,
-            learning_rate: 0.1,
+            learning_rate: 0.001,
             graph,
         }
     }
@@ -195,6 +192,20 @@ pub struct MLP {
 struct WeightChange {
     pub weight: Vec<Vec<f64>>,
     pub bias: Vec<f64>,
+}
+
+pub struct TrainMetrics {
+    mae: Vec<f64>,
+}
+
+impl TrainMetrics {
+    pub fn to_file<W: Write>(&self, mut w: W) {
+        w.write("epoch,mae\n".as_bytes()).unwrap();
+        for (i, m) in self.mae.iter().enumerate() {
+            w.write(format!("{},{}\n", i, m).as_str().as_bytes())
+                .unwrap();
+        }
+    }
 }
 
 impl WeightChange {
@@ -388,13 +399,14 @@ impl MLP {
         return (change, partial_mae);
     }
 
-    pub fn train(&mut self, dataset: Dataset, epochs: u64) {
+    pub fn train(&mut self, dataset: &Dataset, epochs: u64) -> TrainMetrics {
         let d: Vec<(&[f64], &[f64])> = dataset.data.iter().map(|(x, y)| (&x[..], &y[..])).collect();
-        dumplnresult("epoch,mae");
-        for i in 0..epochs {
+        let mut all_mae = Vec::new();
+        for e in 0..epochs {
             let mae = self.train_batch(&d[..]);
-            dumplnresult(format!("{},{}", i, mae).as_str());
+            all_mae.push(mae);
         }
+        TrainMetrics { mae: all_mae }
     }
 
     pub fn train_batch(&mut self, batch: &[(&[f64], &[f64])]) -> f64 {
@@ -481,15 +493,24 @@ impl MLP {
     }
 }
 
+#[cfg(test)]
 mod unit_tests {
+    use num_bigint::BigUint;
+
+    use crate::graph;
+
     use super::*;
     #[test]
     fn test_xor() {
-        println!("Generating Matrices... ");
-        graph::gen_matrices(784, 1);
-        println!("Done");
+        let (_, g) = graph::gen_matrix(
+            2,
+            2,
+            1,
+            BigUint::from(798 as u32),
+            BigUint::from(799 as u32),
+        )
+        .unwrap();
 
-        let g = graph::read_graph(PathBuf::from("graphs/2/15/adjacency_matrix.txt"));
         let mlp_template = MLPTemplate::new(g, 1);
         let mut mlp = mlp_template.build_simple();
         let dataset = &[
@@ -499,40 +520,46 @@ mod unit_tests {
             (&[1.0, 1.0][..], &[0.0][..]),
         ];
 
-        for _ in 0..100000 {
+        for _ in 0..100 {
             mlp.train_batch(dataset);
         }
 
         let input = &[0.0, 0.0];
-        let expected = &[0.0];
-        let output = mlp.predict(input);
+        let expected1 = &[0.0];
+        let output1 = mlp.predict(input);
         println!(
             "input: {:?}, expected: {:?}, output: {:?}",
-            input, expected, output
+            input, expected1, output1
         );
         let input = &[0.0, 1.0];
-        let expected = &[1.0];
-        let output = mlp.predict(input);
+        let expected2 = &[1.0];
+        let output2 = mlp.predict(input);
         println!(
             "input: {:?}, expected: {:?}, output: {:?}",
-            input, expected, output
+            input, expected2, output2
         );
 
         let input = &[1.0, 0.0];
-        let expected = &[1.0];
-        let output = mlp.predict(input);
+        let expected3 = &[1.0];
+        let output3 = mlp.predict(input);
         println!(
             "input: {:?}, expected: {:?}, output: {:?}",
-            input, expected, output
+            input, expected3, output3
         );
 
         let input = &[1.0, 1.0];
-        let expected = &[0.0];
-        let output = mlp.predict(input);
+        let expected4 = &[0.0];
+        let output4 = mlp.predict(input);
         println!(
             "input: {:?}, expected: {:?}, output: {:?}",
-            input, expected, output
+            input, expected4, output4
         );
+
+        assert_eq!(expected1, &output1[..]);
+        assert_eq!(expected2, &output2[..]);
+        assert_eq!(expected3, &output3[..]);
+        assert_eq!(expected4, &output4[..]);
+        assert!(false);
     }
 
     fn train_perceptron(dataset: &[(&[f64; 2], f64)]) -> Perceptron {

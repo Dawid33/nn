@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::path::PathBuf;
+use std::{collections::BTreeMap, process::Termination};
 
 use graph::{render, save_graph, Graph};
 use log::warn;
+use mlp::TrainMetrics;
 use num_bigint::BigUint;
 
 use crate::mlp::MLPTemplate;
@@ -12,13 +13,17 @@ use crate::mlp::MLPTemplate;
 mod graph;
 mod mlp;
 
+struct Params {
+    learning_rate: Vec<f64>,
+}
+
 struct Dataset {
     name: String,
     data: Vec<(Vec<f64>, Vec<f64>)>,
+    params: Params,
 }
 
-fn dump_graph(id: BigUint, g: &Graph) {
-    let inner = g.total - g.input - g.output;
+fn dump_results(inner: u64, id: BigUint, g: &Graph, t: TrainMetrics) {
     let path = PathBuf::from(format!("graphs/{}/{}", inner, id));
     std::fs::create_dir_all(&path).unwrap();
 
@@ -28,37 +33,34 @@ fn dump_graph(id: BigUint, g: &Graph) {
     let graph_path = path.join(format!("graph.dot"));
     let mut f = File::create(graph_path).unwrap();
     render(&g, &mut f);
+
+    let results_path = path.join(format!("output.csv"));
+    t.to_file(File::create(results_path).unwrap())
 }
 
 fn let_er_rip(d: Dataset) {
-    // let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
-    //     Ok(g) => g,
-    //     Err(_) => graph::GraphDealer::new(
-    //         d.data.get(0).unwrap().0.len() as u64,
-    //         1,
-    //         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    //         "partitions.toml".to_string(),
-    //     ),
-    // };
+    let mut gd = match graph::GraphDealer::from_file("partitions.toml") {
+        Ok(g) => g,
+        Err(_) => graph::GraphDealer::new(
+            d.data.get(0).unwrap().0.len() as u64,
+            1,
+            &[2],
+            "partitions.toml".to_string(),
+        ),
+    };
 
-    //Inner loop, quit on ctrl+c and have ability to resume from where it left off.
-    // loop {
-    //     let (id, g) = gd.get_next_graph().unwrap();
-    //     let inner = g.total - g.input - g.output;
-    //     println!("Dumping graph id {}/{}", inner, id);
-    //     dump_graph(id, &g);
-    // }
-
-    let g = graph::read_graph(PathBuf::from(
-        "graphs/7/17908845392794/adjacency_matrix.txt",
-    ));
-    let mlp_template = MLPTemplate::new(g, 1);
-    let mut mlp = mlp_template.build_simple();
-    mlp.train(d, 100000);
-    eval_and_dump();
+    println!("Looking for graphs...");
+    loop {
+        let (id, g) = gd.get_next_graph().unwrap();
+        let inner = g.total - g.input - g.output;
+        print!("Found graph id {}/{}.", inner, id);
+        let mlp_template = MLPTemplate::new(g.clone(), 1);
+        let mut mlp = mlp_template.build_simple();
+        let result = mlp.train(&d, 1);
+        println!(" Trained and dumped to {}/{}", inner, id);
+        dump_results(inner, id, &g, result);
+    }
 }
-
-fn eval_and_dump() {}
 
 fn main() {
     if std::path::PathBuf::from("out.txt").exists() {
@@ -90,6 +92,9 @@ fn main() {
         Dataset {
             name: String::from(file_path.file_name().unwrap().to_str().unwrap()),
             data,
+            params: Params {
+                learning_rate: vec![0.005],
+            },
         }
     } else {
         panic!("File '{}' does not exist.", args[0]);

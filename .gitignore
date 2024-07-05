@@ -4,6 +4,7 @@ graphs
 *.tar.gz
 .~lock*
 venv
+output.csv
 
 perf*
 partitions.toml
